@@ -1,0 +1,76 @@
+\section{Introduction}
+\label{sec:intro}
+
+Make-on-demand chemical libraries now exceed \num{e10} compounds, far beyond
+what structure-based docking can exhaustively evaluate. Ultra-large docking
+campaigns have shown that screening deeper into such libraries recovers
+better and more diverse chemotypes~\citep{lyu2019ultralarge}, but the cost of
+docking every molecule grows with library size. The dominant response is to
+dock a subset and train a \emph{surrogate} model that predicts the docking
+score of the remainder from a cheap molecular representation, then dock only
+the molecules the surrogate ranks highly. This is the basis of pool-based
+active learning for virtual screening~\citep{graff2021molpal} and of related
+iterative schemes~\citep{gentile2022deepdocking}.
+
+The surrogate's representation is therefore a consequential design choice, and
+it has become common to use a pretrained molecular foundation model for it.
+Such models are available in increasing number and variety --- trained on
+SMILES~\citep{ross2022molformer,soares2025smited}, on
+SELFIES, on molecular graphs~\citep{rong2020grover}, on 3D
+conformers~\citep{zhou2023unimol}, and on 2D depictions --- and recent work has
+systematically benchmarked how combining them affects downstream prediction
+tasks in drug discovery~\citep{martinezgalindo2026multimodality}. That study
+trained over \num{1400} models across \num{29} benchmarks and concluded that
+additional modalities generally help provided an effective fusion strategy is
+used, with late fusion outperforming intermediate fusion.
+
+Two gaps motivate the present work.
+
+\paragraph{The missing baseline.}
+Benchmarks of learned molecular representations are typically compared against
+each other, or against a fingerprint, rather than against cheap
+physicochemical descriptors. For docking-score prediction this omission is
+consequential, because docking scoring functions are not scale-free: a
+DOCK3.7 score is a sum of per-atom interaction terms and correlates strongly
+with molecular size. A representation that encodes little beyond size can
+therefore post a high correlation against the true score while carrying no
+information about binding. Without a descriptor control, it is not possible to
+tell these cases apart.
+
+\paragraph{The missing size control.}
+The same mechanism contaminates the evaluation metrics themselves. Pearson
+correlation and RMSE computed over a whole pool are dominated by the
+size-driven component of the variance. A screener, however, operates within a
+desired physicochemical envelope and needs a model that discriminates
+\emph{among} molecules of comparable size. Metrics that do not control for size
+do not answer that question.
+
+\paragraph{Contributions.}
+\begin{enumerate}
+  \item We establish a \num{12}-feature physicochemical descriptor baseline for
+        docking-score regression, evaluated under identical splits, prediction
+        head and metrics as the learned representations it is compared
+        against (Section~\ref{sec:methods}).
+  \item We introduce a size-controlled evaluation protocol --- partial
+        correlation, residual correlation after a polynomial size fit, and
+        metrics within equal-count heavy-atom strata --- and show it separates
+        genuine chemical signal from size encoding
+        (Section~\ref{sec:results-size}).
+  \item We benchmark \todo{N} pretrained molecular embeddings, spanning
+        \numrange{512}{3400} dimensions, against that baseline on pools of up to
+        \num{116} million molecules, reporting learning curves rather than
+        single operating points (Section~\ref{sec:results-backbones}).
+  \item We examine late fusion across representations and show that the
+        prediction-averaging strategy reported as effective in the multimodal
+        benchmarking literature degrades sharply when member quality is uneven
+        (Section~\ref{sec:results-fusion}).
+  \item We release a fully reproducible pipeline, including the dataset
+        alignment verification that this benchmark turns out to require
+        (Section~\ref{sec:repro}).
+\end{enumerate}
+
+\todo{Finalise the headline framing once the backbone sweep completes. If
+learned embeddings fail to clear the descriptor baseline, the paper is a
+negative result about representation quality and the title should say so. If
+they clear it comfortably, the contribution is the size-controlled protocol
+plus a cost--accuracy analysis, and the framing shifts accordingly.}

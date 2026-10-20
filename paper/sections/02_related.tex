@@ -1,0 +1,53 @@
+\section{Related work}
+\label{sec:related}
+
+\paragraph{Ultra-large virtual screening.}
+Docking campaigns against make-on-demand libraries have recovered potent
+ligands at hit rates that improve with library
+size~\citep{lyu2019ultralarge}. The AmpC $\beta$-lactamase and D4 dopamine
+receptor screens from that work are the source of two of the pools used here,
+and their public release of docked scores is what makes surrogate benchmarking
+on realistic distributions possible at all.
+
+\paragraph{Surrogate models and active learning.}
+MolPAL framed accelerated screening as pool-based active
+learning, docking an initial batch, fitting a surrogate, and acquiring further
+batches by predicted score or upper confidence
+bound~\citep{graff2021molpal}. Deep Docking applies a related iterative
+filtering scheme~\citep{gentile2022deepdocking}. Both report that a
+surrogate trained on a small fraction of the pool recovers a large fraction of
+the top-scoring molecules. Their representations are typically fingerprints or
+descriptors; our question is what pretrained embeddings add relative to that
+starting point.
+
+\paragraph{Molecular representation learning.}
+Pretrained molecular models differ in the modality they observe: SMILES
+sequence models~\citep{ross2022molformer,soares2025smited}, graph-based
+models~\citep{rong2020grover}, hypergraph-grammar
+autoencoders~\citep{kajino2019mhg}, and 3D conformer
+models~\citep{zhou2023unimol}. Extended-connectivity
+fingerprints~\citep{rogers2010ecfp} remain a strong classical baseline. Each
+carries a distinct inductive bias, and a recurring question is whether those
+biases are complementary.
+
+\paragraph{Multimodal fusion for molecular property prediction.}
+\citet{martinezgalindo2026multimodality} conducted the most systematic study to
+date, training over \num{1400} models across \num{7} molecular modalities,
+\num{2} architectures, \num{2} fusion strategies and \num{29} benchmarks drawn
+from the Therapeutics Data Commons~\citep{huang2021tdc}. They report that
+additional modalities improve average performance, that late fusion
+consistently outperforms intermediate fusion, and that knowledge-enhanced
+pretraining yields further gains. Our work differs in three respects. First,
+the target is a physics-based docking score rather than an experimental
+property, so the label is cheap, abundant, and --- crucially --- has a known
+dependence on molecular size that permits an explicit control. Second, the
+pools are three to five orders of magnitude larger, which turns representation
+dimensionality into a storage and compute decision rather than an academic one.
+Third, we include a descriptor control, which that study and most of the
+benchmarks it builds on do not.
+
+\todo{Verify whether a size-controlled descriptor baseline for docking
+surrogates has already been published. If so, reframe this contribution as
+quantification at scale rather than as a novel control. Candidate literature:
+deep-docking follow-ups, MolPAL ablations, QSAR-era work on the size dependence
+of scoring functions.}

@@ -1,0 +1,21 @@
+\section{Reproducibility}
+\label{sec:repro}
+
+Code for the full pipeline --- score preparation with identifier verification,
+split construction, training, fusion, reporting and size-controlled evaluation
+--- is released at \todo{repository URL}. The docking scores and molecular
+libraries are public~\citep{lyu2019ultralarge,graff2021molpal}.
+
+We draw attention to one aspect in particular. As described in
+Section~\ref{sec:alignment}, reproducing this benchmark requires reconstructing
+a permutation between the stored embedding order and the stored score order for
+one of the pools, and the failure mode when this is omitted is silent: training
+proceeds normally and the resulting metrics are meaningless. Our preparation
+step therefore verifies the molecular identifier of every row against a
+reference list and refuses to produce a score array on any mismatch. We
+recommend that benchmarks built on precomputed embedding artifacts adopt an
+equivalent check, and we report ours explicitly so that discrepancies with
+future work can be localised.
+
+\todo{State final software versions, hardware, and total compute. Record the
+exact commit hash used for the reported results.}

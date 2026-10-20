@@ -1,0 +1,168 @@
+\section{Results}
+\label{sec:results}
+
+Unless stated otherwise, results are for the \texttt{enhits} pool
+(EnamineHTS, DOCK3.7), with a test set of \num{105215} molecules held out from
+\num{2104302} usable rows, under a single random seed.
+\todo{Repeat all headline comparisons over five seeds and report dispersion;
+single-seed numbers are provisional throughout.}
+
+\subsection{The descriptor baseline and its learning curve}
+\label{sec:results-baseline}
+
+Table~\ref{tab:baseline-curve} reports the descriptor baseline as a function of
+training set size. Performance saturates early: increasing the training set by
+a factor of \num{38}, from \num{50000} to \num{1893872} molecules, improves
+Pearson $r$ by \num{0.028}. This is the expected behaviour of a \num{12}-feature
+model, which exhausts its capacity long before it exhausts the available data.
+
+\begin{table}[t]
+\centering
+\caption{Descriptor baseline on \texttt{enhits}, as a function of training set
+size. Test set \num{105215} molecules.}
+\label{tab:baseline-curve}
+\small
+\begin{tabular}{rrrrrr}
+\toprule
+Train size & Pearson $r$ & Spearman $\rho$ & RMSE & $\mathrm{EF}@1\%$ & $\mathrm{EF}@0.1\%$ \\
+\midrule
+\num{50000}   & 0.8748 & 0.8613 & 0.4611 & 37.5 & 238 \\
+\num{200000}  & 0.8802 & 0.8669 & 0.4517 & 38.4 & 248 \\
+\num{1000000} & 0.8872 & 0.8744 & 0.4391 & 38.7 & 257 \\
+\num{1893872} & 0.8907 & 0.8783 & 0.4326 & 40.7 & 286 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The practical consequence is that the bar a learned representation must clear
+is not only high but cheap: a Pearson $r$ of \num{0.88} is available from
+twelve descriptors and \num{200000} docked molecules, with no embedding
+storage and no pretraining.
+
+\subsection{The baseline is not an artifact of molecular size}
+\label{sec:results-size}
+
+Heavy-atom count alone correlates $-0.659$ with the DOCK3.7 score on this pool,
+which raises the possibility that the baseline's apparent strength is simply
+size encoding. Table~\ref{tab:sizecontrol} shows that it is not.
+
+\begin{table}[t]
+\centering
+\caption{Size-controlled evaluation on \texttt{enhits}. ``Raw'' is the
+conventional metric; ``partial'' and ``residual'' remove a linear and a
+degree-3 dependence on heavy-atom count respectively; ``within-stratum''
+quantities are computed inside ten equal-count heavy-atom bins and weighted by
+bin size. The first row is the degenerate size-only predictor.}
+\label{tab:sizecontrol}
+\small
+\begin{tabular}{lrrrrr}
+\toprule
+ & \multicolumn{3}{c}{Pearson $r$} & \multicolumn{2}{c}{Within-stratum} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-6}
+Model & raw & partial & residual & $r$ & $\mathrm{EF}@1\%$ \\
+\midrule
+Size only ($-$heavy atoms) & 0.6592 & 0.000 & 0.000 & 0.1478 & 2.6 \\
+\midrule
+Descriptors, \num{50000}   & 0.8748 & 0.7647 & 0.7598 & 0.7692 & 25.8 \\
+Descriptors, \num{200000}  & 0.8802 & 0.7756 & 0.7710 & 0.7797 & 28.1 \\
+Descriptors, \num{1000000} & 0.8872 & 0.7896 & 0.7853 & 0.7933 & 29.6 \\
+Descriptors, \num{1893872} & 0.8907 & 0.7966 & 0.7924 & 0.8000 & 30.1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two observations follow. First, the control behaves as intended: the size-only
+predictor attains a substantial raw correlation of \num{0.659} but collapses to
+a within-stratum correlation of \num{0.148} and an enrichment factor of
+\num{2.6}, close to the chance value of \num{1.0}. A feature that is
+near-constant within its own stratum cannot discriminate inside it.
+
+Second, the descriptor baseline loses comparatively little. At the largest
+training size its correlation falls from \num{0.891} to \num{0.797} under
+partial correlation and \num{0.800} within strata, and its top-\SI{1}{\percent}
+enrichment from \num{40.7} to \num{30.1}. Approximately \SI{26}{\percent} of
+the raw enrichment is attributable to size; the remainder reflects genuine
+chemical information carried by the non-size descriptors.
+
+This result is important for the interpretation of everything that follows. A
+descriptor baseline that was merely a size proxy would be a weak and somewhat
+unfair comparator. One that retains a within-stratum enrichment of \num{30}
+is a substantive target, and failure to exceed it is correspondingly
+informative.
+
+\subsection{Learned representations}
+\label{sec:results-backbones}
+
+\todo{Primary results table pending completion of the backbone sweep. Populate
+with: backbone, dimensionality, storage, raw and size-controlled metrics, at
+each of four training budgets. Expected structure below.}
+
+\begin{table}[t]
+\centering
+\caption{Learned representations versus the descriptor baseline on
+\texttt{enhits} at the largest training budget. \todo{pending}}
+\label{tab:backbones-results}
+\small
+\begin{tabular}{lrrrrrr}
+\toprule
+Representation & Dim. & Pearson $r$ & partial $r$ & within $r$ & $\mathrm{EF}@1\%$ & within $\mathrm{EF}@1\%$ \\
+\midrule
+Descriptors & 12 & 0.8907 & 0.7966 & 0.8000 & 40.7 & 30.1 \\
+\midrule
+MHG-GED     & 1024 & \pending & \pending & \pending & \pending & \pending \\
+GROVER      & 3400 & \pending & \pending & \pending & \pending & \pending \\
+Uni-Mol2    &  768 & \pending & \pending & \pending & \pending & \pending \\
+MolFormer   &  768 & \pending & \pending & \pending & \pending & \pending \\
+SMI-TED     &  768 & \pending & \pending & \pending & \pending & \pending \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\todo{Learning-curve figure: Pearson $r$ against training size, one line per
+representation, with the descriptor baseline drawn as a horizontal reference.
+The scientifically informative feature is curve \emph{shape}: a representation
+that begins below the baseline but continues to improve where the baseline has
+flattened has capacity that additional docking would unlock, which is a
+different conclusion from one that flattens at the same point.}
+
+\subsection{Robustness to the choice of prediction head}
+\label{sec:results-robust}
+
+A fixed prediction head invites the objection that any observed deficit of
+learned representations reflects an architecture tuned, in effect, for
+low-dimensional descriptors. We therefore repeat the comparison with two
+additional model families on the same representations and splits: ridge
+regression, and gradient-boosted decision trees.
+
+\todo{Run and report. If the ordering between representations is preserved
+across three model families of markedly different inductive bias, the result
+concerns the representation rather than the head. This is the single most
+important robustness check in the paper.}
+
+\subsection{Late fusion}
+\label{sec:results-fusion}
+
+\todo{Rerun fusion on converged models; the numbers below are from an
+undertrained preliminary sweep and are reported only to indicate the direction
+of the effect.}
+
+In a preliminary experiment, averaging the predictions of a strong
+representation with two weaker ones reduced Pearson $r$ from \num{0.938} to
+\num{0.839}. Prediction averaging weights all members equally, so the
+combination is pulled toward its weakest constituent. Prior reports that late
+fusion reliably improves on single
+modalities~\citep{martinezgalindo2026multimodality} were obtained in a regime
+where member representations performed comparably; that condition does not hold
+here, and unweighted fusion is correspondingly harmful.
+
+\todo{Quantify under the converged sweep, and compare unweighted averaging
+against rank averaging and validation-weighted averaging. A gating rule ---
+fuse only members that clear the descriptor baseline --- is the natural
+remedy and should be evaluated.}
+
+\subsection{Transfer across targets}
+
+\todo{Repeat the headline comparison on \texttt{ampc} and \texttt{d4}. Both
+use DOCK3.7, so agreement across them establishes robustness to target but not
+to scoring function. Claims about docking in general require the Glide pool,
+which is presently unavailable (Section~\ref{sec:data}).}

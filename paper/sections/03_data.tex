@@ -1,0 +1,105 @@
+\section{Data}
+\label{sec:data}
+
+\subsection{Pools}
+
+Each pool pairs a single receptor with a molecular library scored by one
+docking program, so every row is one molecule and the label is its docking
+score (more negative indicates a better predicted binder). Because the receptor
+is fixed within a pool, no protein representation enters the model: the task is
+a regression on molecular representation alone.
+
+\begin{table}[t]
+\centering
+\caption{Docking pools. Scores are not comparable in absolute terms across
+oracles; recall and enrichment are.}
+\label{tab:pools}
+\small
+\begin{tabular}{llrrl}
+\toprule
+Pool & Target & Molecules & Backbones & Oracle \\
+\midrule
+\texttt{enhits} & EnamineHTS                & \num{2104318}    & 5 & DOCK3.7 \\
+\texttt{ampc}   & AmpC $\beta$-lactamase    & \num{98489350}   & 6 & DOCK3.7 \\
+\texttt{d4}     & D4 dopamine receptor      & \num{116225927}  & 6 & DOCK3.7 \\
+\texttt{sura}   & SurA chaperone            & \num{1531875935} & \todo{--} & Glide HTVS \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The \texttt{sura} pool is listed for completeness but excluded from all
+experiments reported here: its embeddings exist only as partial, unstitched
+per-chunk arrays at the time of writing. Its inclusion matters for a future
+version of this work precisely because it uses a different docking program;
+until then, every result below is a statement about DOCK3.7 specifically rather
+than about docking in general.
+
+\subsection{Representations}
+
+Each pool is accompanied by precomputed embeddings from several pretrained
+molecular models, stored as dense \texttt{float32} arrays row-aligned with the
+molecule list (Table~\ref{tab:backbones}). Storage is a material constraint: a
+single \num{3400}-dimensional embedding of the D4 pool occupies
+\SI{1.58}{\tera\byte}.
+
+\begin{table}[t]
+\centering
+\caption{Embedding backbones, dimensionality, and storage for the D4 pool
+(\num{116225927} molecules, \texttt{float32}).}
+\label{tab:backbones}
+\small
+\begin{tabular}{llrr}
+\toprule
+Backbone & Modality & Dim. & D4 storage (\si{\tera\byte}) \\
+\midrule
+GROVER~\citep{rong2020grover}        & molecular graph     & 3400 & 1.58 \\
+Uni-Mol2~\citep{zhou2023unimol}      & 3D conformer        & 1536 & 0.71 \\
+MHG-GED~\citep{kajino2019mhg}        & hypergraph grammar  & 1024 & 0.48 \\
+MolFormer~\citep{ross2022molformer}  & SMILES              &  768 & 0.36 \\
+SMI-TED~\citep{soares2025smited}     & SMILES              &  768 & 0.36 \\
+Uni-Mol v1~\citep{zhou2023unimol}    & 3D conformer        &  512 & 0.24 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two inconsistencies in the stored artifacts are worth recording, as they are
+invisible to a consumer who assumes uniformity. On \texttt{enhits}, the
+Uni-Mol2 embedding is \num{768}-dimensional rather than \num{1536}, having been
+produced by a different extraction; results for that backbone are consequently
+not comparable across pools. The same pool also lacks Uni-Mol v1 entirely and
+stores GROVER under a different filename convention.
+
+\subsection{Row alignment}
+\label{sec:alignment}
+
+Surrogate benchmarking of this kind depends on an assumption that is easy to
+state and easy to violate: that row $i$ of the embedding array corresponds to
+row $i$ of the score vector. A violation does not raise an error. It produces a
+model that trains to a plausible-looking loss curve and reports meaningless
+numbers.
+
+For two of the three pools used here the assumption holds directly. For
+\texttt{enhits} it does not: the embeddings are stored in a shuffled order
+relative to the only available score file, which is itself sorted by score, so
+a naive join yields labels that are both permuted and systematically ordered.
+We therefore treat alignment as a verification step rather than an assumption.
+Our pipeline reconstructs the permutation, applies it, and then checks the
+molecular identifier of every row against a reference list, refusing to proceed
+on any mismatch. All \num{2104318} rows of \texttt{enhits} pass this check; we
+additionally confirmed agreement on \num{50000} randomly drawn rows through an
+independent identifier-to-score mapping.
+
+We report this in detail because it is a reproducibility hazard rather than an
+incidental engineering note: any benchmark built on these public artifacts
+without such a check may silently be reporting noise.
+
+\subsection{Failed docking runs}
+
+Docking runs that fail to produce a pose, or that produce severe steric
+clashes, yield non-negative scores that are not on the same scale as successful
+results. These are removed before splitting, so that training, validation and
+test sets share one universe and the filter is recorded alongside the split
+rather than applied ad hoc at training time. The affected fraction varies
+sharply by pool: approximately \SI{5}{\percent} of the D4 pool (maximum
+observed score $+328$), a negligible fraction of AmpC, and \num{16} rows of
+\texttt{enhits}.

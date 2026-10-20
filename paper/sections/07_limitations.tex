@@ -1,0 +1,41 @@
+\section{Limitations}
+\label{sec:limitations}
+
+\paragraph{One scoring function.}
+All results reported here come from DOCK3.7. The size dependence that motivates
+our control is a property of the scoring function, and its magnitude will
+differ for other programs. Until the Glide pool is available, claims should be
+read as statements about DOCK3.7 rather than about docking generally.
+
+\paragraph{Docking scores are not binding affinities.}
+A surrogate that reproduces a docking score reproduces the scoring function's
+errors along with its signal. Strong performance here implies nothing about
+experimental potency, and the enrichment metrics measure recovery of
+top-scoring molecules, not of actual binders.
+
+\paragraph{Random splits.}
+Our splits are random, which matches the deployment setting of a surrogate
+applied within one pool, but gives no information about generalisation to
+novel scaffolds. Scaffold-based or cluster-based splits would answer a
+different and also important question.
+
+\paragraph{A single prediction head in the primary comparison.}
+The main results hold the head fixed for comparability.
+Section~\ref{sec:results-robust} is the mitigation; absent that check, the
+comparison is between (representation, head) pairs rather than between
+representations.
+
+\paragraph{Embeddings taken as given.}
+We consume precomputed embeddings and do not fine-tune the underlying models.
+Fine-tuning on docking data might substantially change the ordering, and our
+results speak only to the frozen-representation setting --- which is, however,
+the setting in which these models are typically deployed at pool scale, since
+fine-tuning across a billion molecules is itself prohibitive.
+
+\paragraph{Nested learning-curve subsets.}
+Training budgets are nested prefixes of one shuffled index list rather than
+independently drawn samples, so points along a learning curve are correlated.
+This reduces variance in the comparison between budgets but does not support
+treating them as independent observations.
+
+\todo{Add statistical power statement once multi-seed runs are complete.}

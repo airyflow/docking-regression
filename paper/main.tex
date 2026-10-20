@@ -1,0 +1,81 @@
+\documentclass[11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage[binary-units=true]{siunitx}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[colorlinks=true,allcolors=blue]{hyperref}
+\usepackage{authblk}
+
+% ---------------------------------------------------------------------------
+% Draft markers. Set \draftmodefalse to hide them before circulating.
+% ---------------------------------------------------------------------------
+\newif\ifdraftmode
+\draftmodetrue
+
+\ifdraftmode
+  \newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
+  \newcommand{\pending}{\textcolor{red}{\texttt{--.--}}}
+  \newcommand{\note}[1]{\textcolor{blue!70!black}{\small\textsf{[#1]}}}
+\else
+  \newcommand{\todo}[1]{}
+  \newcommand{\pending}{--}
+  \newcommand{\note}[1]{}
+\fi
+
+\sisetup{detect-weight=true,detect-family=true}
+
+\title{\bfseries Do learned molecular representations beat simple descriptors
+for docking-score prediction?\\[0.3em]
+\large A size-controlled benchmark at pool scale}
+
+\author[1]{\todo{author list}}
+\affil[1]{\todo{affiliation}}
+
+\date{Draft --- \today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Surrogate models that predict docking scores from molecular representations
+underpin active-learning approaches to ultra-large virtual screening, where
+exhaustive docking of billion-compound libraries is infeasible. A growing
+number of pretrained molecular foundation models are used as the representation
+in such surrogates, yet their reported performance is rarely compared against a
+trivial descriptor baseline, and almost never controlled for molecular size ---
+despite the fact that physics-based docking scores correlate strongly with the
+number of heavy atoms. We benchmark \todo{N} pretrained molecular embeddings
+against a \num{12}-feature physicochemical descriptor baseline for docking-score
+regression on pools of up to \num{116} million molecules, under identical
+splits, prediction head and evaluation. We report both conventional regression
+and screening metrics and, critically, size-controlled variants computed by
+partialling out heavy-atom count and by scoring within equal-count size strata.
+We find that the descriptor baseline reaches a Pearson correlation of
+\num{0.891} on the EnamineHTS/DOCK3.7 pool, saturating after roughly
+\num{200000} training examples, and that this performance is \emph{not} a size
+artifact: it retains a within-stratum correlation of \num{0.800} and an
+enrichment factor of \num{30.1} at the top \SI{1}{\percent}.
+\todo{headline claim about learned embeddings --- pending sweep}
+We release the full pipeline, including the dataset alignment checks required
+to reproduce the benchmark.
+\end{abstract}
+
+\input{sections/01_introduction}
+\input{sections/02_related}
+\input{sections/03_data}
+\input{sections/04_methods}
+\input{sections/05_results}
+\input{sections/06_discussion}
+\input{sections/07_limitations}
+\input{sections/08_reproducibility}
+
+\bibliographystyle{unsrtnat}
+\bibliography{refs}
+
+\end{document}

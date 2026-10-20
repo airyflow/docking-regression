@@ -1,0 +1,36 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\todo{Write once the backbone sweep and the robustness check are complete. The
+argument differs substantially between outcomes; sketches of both are retained
+below so that the framing is a deliberate choice rather than a reaction to the
+numbers.}
+
+\paragraph{If learned representations do not clear the baseline.}
+The claim would be that pretrained molecular embeddings, as commonly used,
+carry little information about docking score beyond what twelve
+physicochemical descriptors already provide --- and that reported successes
+may partly reflect the absence of such a control together with metrics that do
+not account for molecular size. The practical implication is immediate: a
+surrogate for ultra-large screening need not store terabytes of embeddings,
+and the storage freed is better spent docking more molecules. The claim would
+require the robustness check of Section~\ref{sec:results-robust} to hold across
+model families, and replication on at least one further target.
+
+\paragraph{If they clear it comfortably.}
+The contributions become the size-controlled protocol itself, the demonstration
+that a substantial share of apparent performance is size-driven, and a
+cost--accuracy analysis over embedding dimensionality. The relevant question
+shifts to whether the highest-dimensional representations justify their
+storage: GROVER occupies \num{6.6} times the bytes per molecule of Uni-Mol v1,
+and a comparable accuracy at that ratio is a decision-relevant finding for
+anyone provisioning a screening campaign.
+
+\paragraph{In either case.}
+Two observations appear robust to the outcome. First, the descriptor baseline
+is strong, cheap and non-trivial once size is controlled for, and its absence
+from the surrogate literature is a gap worth closing regardless of which side
+of it learned representations fall. Second, unweighted late fusion is unsafe
+when member quality is uneven; conclusions drawn from benchmarks of comparable
+modalities do not transfer automatically to settings where some
+representations are much weaker than others.

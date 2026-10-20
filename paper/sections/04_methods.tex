@@ -1,0 +1,104 @@
+\section{Methods}
+\label{sec:methods}
+
+\subsection{Splits}
+
+For each pool we draw a single random partition into training, validation and
+test sets (\SI{90}{\percent}/\SI{5}{\percent}/\SI{5}{\percent}) after removing
+failed docking runs. The same partition is reused by every backbone, so a
+comparison between representations is never confounded by a difference in the
+underlying rows. Training indices are stored in random order, which allows a
+training budget of $N$ to be realised as the first $N$ indices; learning-curve
+points are therefore nested subsets rather than independent samples, and the
+corresponding embedding cache for budget $N$ is a prefix of the full cache.
+
+Model selection uses the validation set only. The test set is read once per
+run, after the best epoch has been selected, and the resulting predictions are
+written to disk. This last detail is what makes the fusion and size-control
+analyses in Sections~\ref{sec:results-fusion} and~\ref{sec:results-size}
+possible without retraining.
+
+\subsection{Prediction head}
+
+To isolate the effect of the representation, the prediction head is held fixed
+across all backbones: a multilayer perceptron with hidden widths
+$(1024, 512)$, batch normalisation, ReLU activations and dropout $0.1$,
+regressing a standardised score under mean squared error. Inputs are
+standardised per feature using statistics estimated on a training subsample.
+We optimise with AdamW (learning rate \num{e-3}, weight decay \num{e-5}) under
+a cosine schedule, for at most \num{40} epochs with early stopping after
+\num{6} epochs without validation improvement.
+
+Holding the head fixed trades per-backbone optimality for comparability. We
+address the resulting objection --- that a single architecture may suit some
+representations better than others --- in Section~\ref{sec:results-robust}.
+
+\subsection{Descriptor baseline}
+\label{sec:methods-baseline}
+
+The baseline replaces the learned embedding with \num{12} physicochemical
+descriptors computed with RDKit~\citep{rdkit}: heavy atom count, molecular
+weight, \mbox{cLogP}, topological polar surface area, ring count, rotatable
+bond count, hydrogen bond donor and acceptor counts, fraction of sp\textsuperscript{3}
+carbons, halogen count, aromatic ring count, and heteroatom count. These pass
+through the identical split, prediction head, optimiser and metrics as every
+learned representation, so the comparison is of representation alone.
+
+\subsection{Metrics}
+
+Lower scores indicate better predicted binders, so ``top-$k$'' refers to the
+$k$ most negative values. We report regression metrics (RMSE, MAE, $R^2$,
+Pearson $r$, Spearman $\rho$) and screening metrics: recall of the true top
+fraction $f$ within the predicted top fraction $f$, and the corresponding
+enrichment factor $\mathrm{EF}@f = \mathrm{recall}@f / f$, at
+$f \in \{0.001, 0.01, 0.05\}$.
+
+The two families answer different questions and need not agree. Pearson $r$
+and RMSE are computed over the whole pool and are therefore dominated by the
+large majority of non-binders; enrichment at \SI{0.1}{\percent} describes the
+only region of the ranking a screening campaign would act upon.
+
+\subsection{Size-controlled evaluation}
+\label{sec:methods-size}
+
+Because docking scores scale with molecular size, we compute three additional
+quantities for every set of predictions, all from the stored test predictions
+and therefore applicable retrospectively.
+
+\paragraph{Partial correlation.}
+The correlation between true and predicted score with heavy-atom count $s$
+partialled out of both,
+\begin{equation}
+r_{yp \cdot s} = \frac{r_{yp} - r_{ys} r_{ps}}
+                      {\sqrt{(1 - r_{ys}^2)(1 - r_{ps}^2)}},
+\end{equation}
+which removes a linear dependence on size.
+
+\paragraph{Residual correlation.}
+The correlation between the residuals of $y$ and of $\hat{y}$ after each is
+regressed on a degree-3 polynomial in $s$, which permits size to act
+non-linearly.
+
+\paragraph{Within-stratum metrics.}
+The test set is partitioned into ten equal-count bins of heavy-atom count, and
+Pearson $r$, Spearman $\rho$ and $\mathrm{EF}@0.01$ are computed inside each
+bin and averaged with weights proportional to bin size. This assumes no
+functional form for the size dependence, and corresponds to the practical
+question of whether a model can rank molecules of comparable size.
+
+As a reference point we also evaluate the degenerate predictor
+$\hat{y} = -s$, which by construction attains zero partial and residual
+correlation and near-chance within-stratum performance. Its raw correlation
+quantifies how much of a pool's score variance size alone explains.
+
+\subsection{Fusion}
+
+We combine representations by late fusion: each backbone is trained
+independently and their test predictions are averaged. This permits any subset
+to be evaluated without retraining, which is the property that made late fusion
+attractive in prior multimodal
+benchmarks~\citep{martinezgalindo2026multimodality}. We additionally consider
+rank averaging and standardised averaging, which discard calibration in
+exchange for robustness to differences in scale between members.
+\todo{Add intermediate fusion (concatenated embeddings, jointly trained) if the
+multimodality framing is retained.}
