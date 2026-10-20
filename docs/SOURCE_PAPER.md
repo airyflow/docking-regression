@@ -45,8 +45,64 @@ A three-dimensional factorial grid.
   stopping and no best-model selection**. Pretrained encoders are then
   fine-tuned on the benchmark, with four FC layers and a regression head.
 
-**Fusion (2)** — intermediate (shared latent space, jointly processed) and late
-(per-modality predictions averaged).
+**Fusion (2)** — intermediate and late. Worth setting out in detail, because
+the distinction is where their central claim lives and because it differs from
+what this project calls feature-level fusion.
+
+They place both against a three-way taxonomy taken from the fusion literature.
+*Early* fusion concatenates raw modalities and hands them to a single model,
+which is what most prior multimodal molecular work had done and which they
+explicitly do not test. *Intermediate* fusion encodes each modality
+independently into a latent representation, then combines those
+representations and processes them further to produce a prediction. *Late*
+fusion lets each modality produce its own prediction and aggregates the
+predictions.
+
+Their intermediate fusion is concrete and worth quoting in mechanism. In the
+FFNN arm, each modality embedding passes through its own projection block — a
+single fully-connected layer into a shared 512-dimensional space. The projected
+*drug* embeddings are then averaged across modalities, while the protein side
+comes from ESM alone. The predicted affinity is the inner product of the
+aggregated drug embedding with the protein embedding, trained under MSE. In the
+Otter-Knowledge arm the same idea runs through the pretrained GNN: the base
+network integrating the modality combination is augmented with a parallel
+branch that transforms the GNN embeddings, the pretrained encoders are
+fine-tuned on the benchmark training set, and four fully-connected layers plus
+a regression head fuse the target and molecule representations.
+
+The critical detail is that **the projection layers are trained jointly with
+the head**. The modality-specific encoders are frozen, but the layers that map
+them into the shared space are not — they learn to make heterogeneous
+embeddings commensurable. That is what makes it intermediate rather than early
+fusion, and it is why this project's concatenation of frozen embeddings into a
+single head is called *feature-level* fusion rather than intermediate: ours has
+no learned per-modality projection, so a direct comparison with their result
+would not be like for like.
+
+Their late fusion is simpler: each modality gets its own complete model, each
+produces a prediction, and the predictions are averaged unweighted. In the
+Otter-Knowledge arm that means Otter-Knowledge produces a prediction per
+modality — MF, IMC, UM, SMI, CB, MG, MOLF — and the mean is the final decision.
+No weighting, no stacking, no calibration; the ensemble operator is the
+arithmetic mean.
+
+The two arms also differ in which combinations they are allowed to contain, and
+this is not a detail. Under intermediate fusion they permit **only one model
+from the sequence-based set** {CB, MOLF, SMI, MG}, on the grounds that three of
+those are pretrained on SMILES and the fourth on SELFIES, so they carry
+overlapping information and combining them would be redundant and expensive.
+That restriction yields **39 combinations**. Under late fusion they impose no
+such restriction, because once the per-modality models exist, combining their
+outputs is cheap and same-type modalities can still help at the decision level.
+That yields **127 combinations**.
+
+Their stated reasoning is that intermediate fusion requires genuine
+complementarity, since the network must integrate heterogeneous embeddings
+directly, whereas late fusion aggregates decisions and can therefore tolerate
+redundant or same-type members. It is a reasonable argument, and it is also the
+source of the confound described below: the restriction means intermediate
+fusion never reaches five or six modalities at all, so any comparison across
+modality counts is partly a comparison between fusion arms.
 
 **Modalities (7 + 1)** — ChemBERTa, MolFormer, SMI-TED, Morgan fingerprint,
 MolGen, ImageMol-with-classification-layer, Uni-Mol; plus ESM-2 650M for
@@ -57,10 +113,53 @@ drug and target splits) = 7 splits. Plus 22 TDC ADMET. ADMET uses FFNN only,
 since with no protein sequences the KG would collapse to a single drug node.
 
 **Scale** — 1467 models, 6039 experiments, 5 predefined seeds each, results
-averaged. 39 intermediate-fusion combinations (restricted to at most one
-sequence-based model, as CB/MOLF/SMI are all SMILES-pretrained and MG is
-SELFIES), 127 late-fusion combinations (no restriction, since combining already
-trained models is cheap).
+averaged.
+
+### What the 1,467 actually are
+
+Easy to misread, and worth being precise about: **the seven encoders are not
+among the 1,467.** They are frozen pretrained inputs, downloaded and never
+trained. The 1,467 are the downstream surrogates fitted on combinations of
+those encoders' outputs.
+
+The arithmetic reconstructs almost exactly from their stated design. There are
+**36 (benchmark × architecture) settings**: 7 DTI splits × 2 architectures,
+plus 22 ADMET benchmarks under FFNN only — no Otter-Knowledge arm there,
+because a knowledge graph built from drug-property data with no protein
+sequences would collapse to a single drug node.
+
+| | arithmetic | result | they state | difference |
+|---|---|---:|---:|---:|
+| Models | 36 settings × 39 IF combinations | 1,404 | 1,467 | **63** |
+| Experiments | 36 settings × (39 IF + 127 LF) | 5,976 | 6,039 | **63** |
+
+The same 63 in both columns means those entities were each trained once and
+evaluated once — almost certainly the modality-selection runs that
+Supplementary Dataset 3 says it contains, "the experiments with IM and ESM-2".
+
+### The asymmetry this exposes
+
+**Late fusion adds experiments but not models.** The 39 intermediate-fusion
+combinations are trained, and those include the 7 single-modality models. All
+127 late-fusion combinations are then arithmetic over predictions already
+stored — no further training. That is why 127 combinations on the late side
+cost no more than 39 on the intermediate side, and it is the same property that
+lets any late-fusion analysis evaluate every subset retrospectively.
+
+It also means the headline coverage is less independent than it first reads.
+Roughly 1,400 surrogates were trained over 7 frozen encoders, and about 6,000
+combinations of those surrogates' outputs were evaluated. Both numbers are
+real, but "1,467 models" invites the reading that 1,467 things were
+independently fitted, when a large share of the coverage comes from cheaply
+recombining a much smaller set.
+
+### Why the two arms have different combination counts
+
+39 intermediate-fusion combinations, restricted to at most one sequence-based
+model, since CB/MOLF/SMI are all SMILES-pretrained and MG is SELFIES.
+127 late-fusion combinations with no restriction, because combining already
+trained models is cheap and same-type modalities can still help at the
+decision level.
 
 **Leakage control** — overlapping triples between test sets and the pretraining
 KG were removed.
