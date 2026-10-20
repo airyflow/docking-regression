@@ -168,30 +168,82 @@ may partly be measuring which embeddings encode size and polarity.
 
 ## What this means for our study
 
-**Calibration.** This cleared *Nature Communications* on coverage (1467
-models), established leaderboards (TDC gave verifiable SOTA claims), released
-resources, and timeliness — not on a new idea. We cannot win on coverage: three
-pools against 29 benchmarks.
+This paper cleared *Nature Communications* on coverage, established
+leaderboards, released resources and timeliness — not on a new idea. There is
+no new architecture, encoder or algorithm in it. We cannot win the same way:
+three pools against twenty-nine benchmarks is not a contest. What we have that
+they lack is a controlled descriptor baseline, a size-decomposition protocol,
+genuine reproducibility — their Code Availability concedes dependence on IBM
+proprietary infrastructure and deleted checkpoints — and pools three to five
+orders of magnitude larger.
 
-**What we have that they lack:** a controlled descriptor baseline, a
-size-decomposition protocol, genuine reproducibility (their Code Availability
-concedes dependence on IBM proprietary infrastructure and deleted checkpoints),
-and pools three to five orders of magnitude larger.
+The inheritance worth taking is structural. Their three-axis design, modality
+crossed with architecture crossed with fusion, is a good skeleton, and we have
+adapted it by swapping their architecture axis for a prediction-head axis,
+since with one fixed receptor their knowledge-graph arm has no drug–protein
+edges to exploit. Their statistical apparatus is worth copying outright: five
+seeds, Wilcoxon signed-rank, Holm-adjusted Conover for pairwise importance, and
+complementarity measured through prediction correlation rather than asserted.
+We have done the correlation analysis and partly done the seeds; the paired
+significance tests remain missing and are cheap, since every representation
+shares a split. Their cost and parameter table is also worth reproducing.
 
-**What we should copy:** the statistical rigour (multi-seed, Wilcoxon,
-Holm-adjusted pairwise tests), the complementarity analysis via prediction
-correlation, and the cost/parameter table.
+Their failures instruct as much as their methods. Never compare across modality
+counts when the available counts differ by fusion arm, which is how their
+headline 0.151 ended up mixing modality count with fusion strategy. Never
+compare architectures trained under different protocols. And always carry a
+trivial baseline, because 1,467 models that never meet twelve RDKit descriptors
+cannot establish that any of the machinery earned its place. Our fixed head and
+shared splits already guard against the second trap; the first is a live risk in
+our own fusion work, where subset sizes vary by arm.
 
-**What we should avoid:** their two flaws. Specifically — never compare across
-modality counts when the available counts differ by fusion arm, and never
-compare architectures under different training protocols. Our fixed head and
-shared splits already guard against the second; the first is a trap for our own
-fusion work, where subset sizes vary.
-
-**Direct conflict with our results.** Their Q4 finding that "most modalities
-provide informative representations," with broadly similar distributions, does
-**not** hold for docking. We see a bimodal split: Uni-Mol2 and MHG-GED at
-Pearson ~0.95, SMI-TED and MolFormer at ~0.66–0.69, with 12 free descriptors at
-0.89 between them (see [FINDINGS.md](FINDINGS.md) F5). Their Uni-Mol result is
-the one point of agreement — it is their only statistically significant
+What transfers least well is their actual conclusions. Their Q4 finding that
+"most modalities provide informative representations", with broadly similar
+distributions, does not hold here: we see a bimodal split with Uni-Mol2 and
+MHG-GED near Pearson 0.95, SMI-TED and MolFormer at 0.66–0.69, and twelve free
+descriptors at 0.89 between them (FINDINGS F5). Their Q1 and Q2 conclusions
+fare no better — the best subset on our data is two of six at every budget
+tested, and feature-level concatenation of the right pair beats every
+prediction-level method we implemented, which is the reverse of their
+late-beats-intermediate result. Their Uni-Mol finding is the one point of
+agreement, and a notable one: it is their only statistically significant
 modality, and our best backbone is also the 3D conformer model.
+
+That docking behaves differently is not surprising once you notice what a
+DOCK3.7 score is. It is a physics sum — van der Waals, Poisson–Boltzmann
+electrostatics, AMSOL desolvation — evaluated over a posed 3D conformer, rather
+than an experimental measurement of the kind their ADMET and DTI endpoints
+record. A representation carrying geometry should transfer to it; a string
+model has further to go.
+
+## What follows for docking-score prediction
+
+Three lines of work follow, in increasing order of ambition.
+
+The nearest is finishing what is underway: seeds on the full-budget and
+DOCKSTRING results, extending DOCKSTRING with MHG-GED, SMI-TED and Uni-Mol2 so
+the cross-dataset comparison rests on more than the two matched representations
+it currently has, and running `ampc` as a third DOCK3.7 pool to test whether
+the family split is specific to EnamineHTS.
+
+The most distinctive opportunity is one this paper could not have taken, and it
+engages a different literature. MolPAL and its successors report recovering
+roughly 90% of the top-50k on AmpC and D4, and as far as our literature search
+reached, none of them reports what twelve free descriptors recover on the same
+split. Given descriptors reach EF@1% of 40.7 on EnamineHTS, that number is
+worth knowing. Supplying a null baseline for the ultra-large docking surrogate
+benchmark is specific, checkable, and argues with named prior work rather than
+adding another leaderboard. The caveat is that it needs pool-level retrieval —
+recall of the true top-N after acquiring M — which is not the random-split
+enrichment we currently compute, so it needs new evaluation code.
+
+The most ambitious would treat representation sensitivity — the spread across
+representations on a given target — as the quantity to be explained rather than
+reported, and predict it from landscape properties such as size-explained
+variance, which already ranges from 4% on ESR2 to 43% on EnamineHTS.
+DOCKSTRING's 58 targets share one molecule set, so embeddings extracted once
+serve all of them and each additional target costs only surrogate training.
+That converts a ranking table into an account of when rankings matter at all,
+which is a better paper than a comparison — but it depends entirely on the
+DOCKSTRING extraction in the first line of work, and should not be started
+before it.
